@@ -19,3 +19,10 @@ log(x);
 javascript does not update by reference. You pass in global variables, if you don't return then won't do anything
 
 kyle simpson "You don't know js"
+
+4 ways of doing it: 
+
+inc = addf(1);
+inc = curry(add,1);
+inc = curryr(add,1);
+inc = liftf(add)(1);
