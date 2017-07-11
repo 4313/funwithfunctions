@@ -264,11 +264,11 @@ function filter(generator, predicate) {
 function filter_courserecursion(generator, predicate) {
   return function recur() {
     var value = generator();
-      if (value === undefined || predicate(value)) {
-        return value;
-      } else {
-        return recur();
-      }
+    if (value === undefined || predicate(value)) {
+      return value;
+    } else {
+      return recur();
+    }
   }
 }
 var gen = filter(fromto(0, 5), function third(value) {
@@ -280,18 +280,18 @@ console.log(gen());//3
 console.log(gen());//undefined
 
 //concat factory, a function that takes two generator and produces a generator that combines the sequences
-function concat(gen1,gen2){
-  return function(){
-     var value = gen1();
-     if(value !== undefined){
-       return value;
-     } else {
-       value = gen2();
-       return value;
-     }
+function concat(gen1, gen2) {
+  return function () {
+    var value = gen1();
+    if (value !== undefined) {
+      return value;
+    } else {
+      value = gen2();
+      return value;
+    }
   }
 }
-var gen = concat(fromto(0,3),fromto(0,2));
+var gen = concat(fromto(0, 3), fromto(0, 2));
 console.log("concat factory, a function that takes two generator and produces a generator that combines the sequences");
 console.log(gen());//0
 console.log(gen());//1
@@ -299,3 +299,140 @@ console.log(gen());//2
 console.log(gen());//0
 console.log(gen());//1
 console.log(gen());//undefined
+
+
+//gensymf factory function that makes generators that make unique symbols.
+function gensymf(seed) {
+  var gen = from(1);
+  return function () {// shoudl really add a check for typeof string
+    return seed + gen();
+  }
+}
+var geng = gensymf("G");
+var genh = gensymf("H");
+console.log("gensymf factory function that makes generators that make unique symbols.");
+console.log(geng());//G1
+console.log(genh());//H1
+console.log(geng());//G2
+console.log(genh());//H2
+
+//Make a factory factory gensymff that takes a starting value and returns a factory
+function gensymf_configurable(seed, startingValue = 1) {  //could check for undefined or type here rather than use default
+  var gen = from(startingValue);
+  return function () {// shoudl really add a check for typeof string
+    return seed + gen();
+  }
+}
+function gensymff(startingValue) {
+  return function (seed) {
+    return gensymf_configurable(seed, startingValue);
+  }
+}
+var gensymf_new = gensymff(1);
+var geng = gensymf_new("G");
+var genh = gensymf_new("H");
+console.log("Make a factory factory gensymff that takes a starting value and returns a factory");
+console.log(geng());//G1
+console.log(genh());//H1
+console.log(geng());//G2
+console.log(genh());//H2
+
+//make a factory fibonaccif that returns a generator that will return the next fibnacci number
+function fibonaccif(firstNumber, secondNumber) {
+  var count = 0;
+  return function () {
+    if (count == 0) {
+      count++;
+      return firstNumber;
+    } else if (count == 1) {
+      count++;
+      return secondNumber;
+    } else {
+      var answer = firstNumber + secondNumber;
+      firstNumber = secondNumber;
+      secondNumber = answer;
+      count++;
+      return answer;
+    }
+  }
+}
+function fibonaccif_course(a, b) {
+  return function () {
+    var next = a;
+    a = b;
+    b += next;
+    return next;
+  }
+}
+var single = composeu(identityf, curryr(limit, 1));
+function fibonaccif_course2(a, b) {
+  return concat(
+    concat(single(a), single(b)), function fibonacci() {
+      var next = a + b;
+      a = b;
+      b = next;
+      return next;
+    }
+  )
+}
+
+var fib = fibonaccif(0, 1);
+console.log("make a factory fibonaccif that returns a generator that will return the next fibnacci number");
+console.log(fib());//0
+console.log(fib());//1
+console.log(fib());//1
+console.log(fib());//2
+console.log(fib());//3
+console.log(fib());//5
+
+//write a counter constructor that returns an object containing two functions that implement an up/down counter, hiding the counter
+function counter() {
+  var counter = 0;
+  return {
+    up: function () {
+      return ++counter;
+    },
+    down: function () {
+      return --counter;
+    }
+  }
+}
+var object = counter();
+var up = object.up;
+var down = object.down;
+console.log("write a counter constructor that returns an object containing two functions that implement an up/down counter, hiding the counter");
+console.log(up());//1
+console.log(down());//0
+console.log(down());//-1
+console.log(up());//0
+
+//Make a revocable constructor that takes a binary function, and returns an obkect containing an invoke function that can invoke the binary function and a revoke function that disables the invoke function
+function revocable(func) {
+  var invokeable = true;
+  return {
+    invoke: function (x, y) {
+      return invokeable ? func(x, y) : undefined;
+    },
+    revoke: function () {
+      invokeable = false;
+    }
+  }
+}
+
+function revocable_course(func) {
+  var invokeable = true;
+  return {
+    invoke: function (x, y) {
+      return func(x, y);
+    },
+    revoke: function () {
+      func = undefined;
+    }
+  }
+}
+var rev = revocable(add);
+var add_rev = rev.invoke;
+console.log("Make a revocable constructor that takes a binary function, and returns an obkect containing an invoke function that can invoke the binary function and a revoke function that disables the invoke function");
+console.log(add_rev(3, 4));//7
+rev.revoke();
+console.log(add_rev(5, 7));//undefined
