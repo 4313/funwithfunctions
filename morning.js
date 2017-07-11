@@ -436,3 +436,241 @@ console.log("Make a revocable constructor that takes a binary function, and retu
 console.log(add_rev(3, 4));//7
 rev.revoke();
 console.log(add_rev(5, 7));//undefined
+
+//WRite a constructor m that takes a value and an optional source string and returns them in an object
+function m(value, source) {
+  return {
+    value: value,
+    source: (typeof source === "string") ? source : String(value)
+  }
+};
+console.log(JSON.stringify(m(1)));
+//{"value": 1}
+
+//write a function addm that takes two m objects and returns an m object
+function addm(m1, m2) {
+  return m(m1.value + m2.value, "(" + m1.source + "+" + m2.source + ")");
+}
+console.log("write a function addm that takes two m objects and returns an m object");
+console.log(JSON.stringify(addm(m(3), m(4)))); // {"value": 7, "source": "(3+4)"}
+console.log(JSON.stringify(addm(m(1), m(Math.PI, "pi")))); // {"value": 4.14159, "source": (1+pi)}
+
+//write a function liftm that takes a binary function and a string and returns a function that acts on m objects
+function liftm(func, operatorRepresentation) {
+  return function (x, y) {
+    return m(func(x.value, y.value), "(" + x.source + operatorRepresentation + y.source + ")");
+  }
+}
+console.log("write a function liftm that takes a binary function and a string and returns a function that acts on m objects")
+var addmObj = liftm(add, "+");
+console.log(JSON.stringify(addmObj(m(3), m(4)))); // {"value": 7, "source": "(3+4)"}
+var mulmObj = liftm(mul, "*");
+console.log(JSON.stringify(mulmObj(m(3), m(4)))); // {"value": 12, "source": "(3*4)"}
+
+//modify liftm so that the functions it produces can accept arguments that are either numbers or m objects
+function liftm_modified(func, operatorRepresentation) {
+  return function (x, y) {
+    if (typeof x === "number") {
+      x = new m(x);
+    }
+    if (typeof y === "number") {
+      y = new m(y);
+    }
+
+    return m(func(x.value, y.value), "(" + x.source + operatorRepresentation + y.source + ")");
+  }
+}
+console.log("modify liftm so that the functions it produces can accept arguments that are either numbers or m objects")
+var addmObj = liftm_modified(add, "+");
+console.log(JSON.stringify(addmObj(3, 4))); // {"value": 7, "source": "(3+4)"}
+var mulmObj = liftm_modified(mul, "*");
+console.log(JSON.stringify(mulmObj(m(3), m(4)))); // {"value": 12, "source": "(3*4)"}
+
+//Make a function continuize that takes a unary function, and returns a function that takes a callback and an argument
+function continuize(func) {
+  return function (callback, ...arg) {
+    return callback(func(...arg));
+  }
+}
+console.log("Make a function continuize that takes a unary function, and returns a function that takes a callback and an argument");
+var sqrtc = continuize(Math.sqrt);
+sqrtc(console.log, 81);
+
+//allowing order of constructor args to be variable. ES6
+function constructor(spec) {
+  let { member } = spec; // this intializes a variable in the object with the same name. This lets you intialize objects with your own order
+  const { other } = other_constructor(spec); // This just gets us the method we want, rather than everything.
+  const method = function () {
+    //spec, member, other, method
+  };
+  return Object.freeze({
+    method,
+    other
+  }); //Immutable object. We are allowed to only state variable name and it creates a field with that name and value
+}
+//Advocates objects with only data, and objects with only functions.
+//Should pass in an object with all of the data changes in one go, rather individual getters and setters
+//functional programming is where the future is. The classical model is very brittle when dealing with concurrency and parallelism
+
+//Security
+//make an array wrapper object with methods get, store, append such that an attacler cannot get access to the private array
+function vector() {
+  var array = [];
+
+  return {
+    get: function get(i) {
+      return array[i];
+    },
+    store: function store(i, v) {
+      array[i] = v;
+    },
+    append: function append(v) {
+      array.push(v);
+    }
+  }
+}
+
+var myvector = vector();
+myvector.append(7);
+myvector.store(1, 5);
+
+
+//Attack consists of replacing push
+var stash;
+myvector.store("push", function () {
+  stash = this;
+});
+myvector.append(); //stash is array
+//'this' word is evil. He advocates getting rid of it, its built upon confusion. It's the only dynamic variable in a language of static ones. It causes security flaws.
+//Fix it:
+function vector_secure() {
+  var array = [];
+
+  return {
+    get: function get(i) {
+      return array[+i];//the plus forces it into an integer, no strings allowed
+    },
+    store: function store(i, v) {
+      array[+i] = v;
+    },
+    apped: function append(v) {
+      array[array.length] = v;//stops the renaming push problem
+    }
+  }
+}
+
+//Another one
+//Make a function that makes a publish/subscribe object. it will reliably deliver all publications to all subscribers in the right order
+
+var my_pubsub = pubsub();
+function log(name) {
+  return {
+    name:name,
+    publish:function(message){
+      console.log(message);
+    }
+  }
+}
+my_pubsub.subscribe(log());
+my_pubsub.subscribe(log());
+my_pubsub.subscribe(log());
+
+my_pubsub.publish("it works");
+
+function pubsub() {
+  var subscribers = [];
+  return {
+    subscribe: function (subscriber) {
+      subscribers.push(subscriber);
+    },
+    publish: function (publication) {
+      var i;
+      var length = subscribers.length;
+      for (i = 0; i < length; i += 1) {
+        subscribers[i].publish(publication);
+      }
+    }
+  };
+}
+//stop people from getting messages. no-one after this will get any messages because it causes an exception.
+my_pubsub.subscribe(undefined);
+
+//fix it with a try catch
+function pubsub_trycatch() {
+  var subscribers = [];
+  return {
+    subscribe: function (subscriber) {
+      subscribers.push(subscriber);
+    },
+    publish: function (publication) {
+      var i;
+      var length = subscribers.length;
+      for (i = 0; i < length; i += 1) {
+        try {
+          subscribers[i](publication);
+        } catch (ignore) { }
+      }
+    }
+  };
+}
+//my_pubsub.publish = undefined
+//use object.freeze, so you can't replace functions
+function pubsub_frozen() {
+  var subscribers = [];
+  return Object.freeze({
+    subscribe: function (subscriber) {
+      subscribers.push(subscriber);
+    },
+    publish: function (publication) {
+      var i;
+      var length = subscribers.length;
+      for (i = 0; i < length; i += 1) {
+        try {
+          subscribers[i](publication);
+        } catch (ignore) { }
+      }
+    }
+  });
+}
+//my_pubsub.subscribe(function () { this.length = 0}); mess with this.length etc
+//fixed with:
+function pubsub_foreach() {
+  var subscribers = [];
+  return Object.freeze({
+    subscribe: function (subscriber) {
+      subscribers.push(subscriber);
+    },
+    publish: function (publication) {
+      subscribers.forEach(function (s) {
+        try {
+          s(publication);
+        } catch (ignore) { }
+      });
+    }
+  });
+}
+//make a subscriber call publish
+my_pubsub.subscribe(limit(function () {
+  my_pubsub.publish("Out of order")
+}), 1);
+
+function pubsub_timeout() {
+  var subscribers = [];
+  return Object.freeze({
+    subscribe: function (subscriber) {
+      subscribers.push(subscriber);
+    },
+    publish: function (publication) {
+      subscribers.forEach(function (s) {
+        try {
+          setTimeout(function(){
+            s(publication);
+          },0);
+        } catch (ignore) { }
+      });
+    }
+  });
+}
+//Returns a number that can be used to workout where things are in the queue
+
+//http://www.crockford.com/pp/problems.pptx
