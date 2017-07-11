@@ -26,3 +26,8 @@ inc = addf(1);
 inc = curry(add,1);
 inc = curryr(add,1);
 inc = liftf(add)(1);
+
+ES6 added the ability to do this:
+function(...x,y){
+    return x;
+}
