@@ -6,7 +6,7 @@ Inner function survives the outer function
 if function a() {
 return function b();
 }
-the caller of function a now has function b, but has access to any variables in function a
+the caller of function a now has function b, but b has use of any variables in function a
 
 
 function f(y){
@@ -16,16 +16,7 @@ var x = [];
 f(x);
 log(x);
 
-javascript does not update by reference. You pass in global variables, if you don't return then won't do anything
-
 kyle simpson "You don't know js"
-
-4 ways of doing it: 
-
-inc = addf(1);
-inc = curry(add,1);
-inc = curryr(add,1);
-inc = liftf(add)(1);
 
 ES6 added the ability to do this:
 function(...x,y){

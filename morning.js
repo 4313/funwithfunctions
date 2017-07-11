@@ -127,9 +127,9 @@ function limitTernary(func, limit) {
   }
 }
 //limit without a count variable from course
-function limitWithoutACount(func,count){
-  return function(a,b){
-    return count-- < 1 ? func(a,b) : undefined;
+function limitWithoutACount(func, count) {
+  return function (a, b) {
+    return count-- < 1 ? func(a, b) : undefined;
   }
 }
 var add_ltd = limit(add, 1);
@@ -138,14 +138,14 @@ console.log(add_ltd(1, 2));
 console.log(add_ltd(1, 2));
 
 //from factory, produces a generator that will produce a series of values
-function from(x){
-  return function(){
+function from(x) {
+  return function () {
     return x++;//You could define a more complex series in here.
   }
 }
 //From the course
-function from2(x){
-  return function(){
+function from2(x) {
+  return function () {
     var next = number;
     number += 1;
     return next;
@@ -159,31 +159,31 @@ console.log(gen());//2
 console.log(gen());//3
 
 // To factory, a function that takes a generator and an end value and returns a generator that will produce numbers up to that limit
-function to(func,limit){
-  return function(){
+function to(func, limit) {
+  return function () {
     var value = func();
     return value < limit ? value : undefined;
   }
 }
 
-var gen = to(from(3),5);
+var gen = to(from(3), 5);
 console.log("To factory, a function that takes a generator and an end value and returns a generator that will produce numbers up to that limit");
 console.log(gen());//3
 console.log(gen());//4
 console.log(gen());//undefined
 
 //FromTo Factory, producs a generator that will produce  values in a range
-function fromto(start,end){
-  return function(){
+function fromto(start, end) {
+  return function () {
     return start < end ? start++ : undefined;
   }
 }
 //Reusing previous code, Course
-function fromto_course(start,end){  
-    return to(from(start),end);
+function fromto_course(start, end) {
+  return to(from(start), end);
 }
 
-var gen = fromto_course(0,3);
+var gen = fromto_course(0, 3);
 console.log("FromTo Factory, producs a generator that will produce  values in a range");
 console.log(gen());//0
 console.log(gen());//1
@@ -192,3 +192,110 @@ console.log(gen());//undefined
 
 //11:15 break
 
+//element factory, takes an array and a generator and returns a generator that will produce elements from the array
+function element(array, generator) {
+  return function () {
+    var index = generator();
+    return index !== undefined ? array[index] : undefined;
+  }
+}
+var gen = element(["a", "b", "c", "d"], fromto_course(1, 3));
+console.log("element factory, takes an array and a generator and returns a generator that will produce elements from the array");
+console.log(gen());//b
+console.log(gen());//c
+console.log(gen());//undefined
+
+//element_modified, adjusted version of element factory that has generator as optional. If generator is not provided then each of the elements of the array will be produced
+function element_modified(array, generator = fromto(0, array.length)) {
+  return function () {
+    var index = generator();
+    return index !== undefined ? array[index] : undefined;
+  }
+}
+//Course version
+function element_course(array, generator) {
+  if (generator === undefined) {// I could use not typeof function to make it more resilient
+    generator = fromto(0, array.length);
+  }
+  return function () {
+    var index = generator();
+    return index !== undefined ? array[index] : undefined;
+  }
+}
+var gen = element_modified(["a", "b", "c", "d"]);
+console.log("element_modified, adjusted version of element factory that has generator as optional. If generator is not provided then each of the elements of the array will be produced");
+console.log(gen());//a
+console.log(gen());//b
+console.log(gen());//c
+console.log(gen());//d
+console.log(gen());//undefined
+
+//Collect generator, a function that takes a generator and array and produces a function that will collect the result in the array
+function collect(generator, array) {
+  return function () {
+    var value = generator();
+    if (value !== undefined) {
+      array.push(value);
+      return value;
+    }
+  }
+}
+var array = [];
+var gen = collect(fromto(0, 2), array);
+console.log("Collect generator, a function that takes a generator and array and produces a function that will collect the result in the array");
+console.log(gen());//0
+console.log(gen());//1
+console.log(gen());//undefined
+console.log(array);// [0,1]
+
+//filter factory that takes a generator and a predicate and produces a generator that produces only the values approved by the predicate
+function filter(generator, predicate) {
+  return function () {
+    var value = generator();
+    while (value !== undefined) {
+      if (predicate(value)) {
+        return value;
+      } else {
+        value = generator();
+      }
+    }
+  }
+}
+function filter_courserecursion(generator, predicate) {
+  return function recur() {
+    var value = generator();
+      if (value === undefined || predicate(value)) {
+        return value;
+      } else {
+        return recur();
+      }
+  }
+}
+var gen = filter(fromto(0, 5), function third(value) {
+  return (value % 3) === 0;
+});
+console.log("filter factory that takes a generator and a predicate and produces a generator that produces only the values approved by the predicate");
+console.log(gen());//0
+console.log(gen());//3
+console.log(gen());//undefined
+
+//concat factory, a function that takes two generator and produces a generator that combines the sequences
+function concat(gen1,gen2){
+  return function(){
+     var value = gen1();
+     if(value !== undefined){
+       return value;
+     } else {
+       value = gen2();
+       return value;
+     }
+  }
+}
+var gen = concat(fromto(0,3),fromto(0,2));
+console.log("concat factory, a function that takes two generator and produces a generator that combines the sequences");
+console.log(gen());//0
+console.log(gen());//1
+console.log(gen());//2
+console.log(gen());//0
+console.log(gen());//1
+console.log(gen());//undefined
